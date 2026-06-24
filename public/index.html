@@ -2,23 +2,31 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Consulta de Saldo</title>
     <style>
-        body { font-family: sans-serif; background: #f4f7f6; padding: 20px; }
-        .box { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; display: flex; justify-content: center; padding: 20px; }
+        .box { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
         input { width: 100%; padding: 12px; margin: 15px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; }
-        table { width: 100%; margin-top: 20px; border-collapse: collapse; font-size: 0.9rem; }
-        th, td { border-bottom: 1px solid #ddd; padding: 8px; text-align: left; }
+        button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #0056b3; }
+        #res { margin: 15px 0; font-size: 1.2rem; font-weight: bold; color: #333; }
+        table { width: 100%; margin-top: 20px; border-collapse: collapse; font-size: 0.85rem; }
+        th { background: #f8f9fa; border-bottom: 2px solid #dee2e6; padding: 10px; text-align: left; }
+        td { border-bottom: 1px solid #eee; padding: 10px; }
+        .gasto { color: #d9534f; }
+        .carga { color: #5cb85c; }
     </style>
 </head>
 <body>
+
     <div class="box">
         <h3>Consulta de Saldo</h3>
-        <input type="text" id="card" placeholder="16 dígitos" maxlength="16">
+        <input type="text" id="card" placeholder="Ingrese 16 dígitos" maxlength="16">
         <button onclick="consultar()">CONSULTAR</button>
-        <div id="res" style="margin: 15px 0; font-weight: bold;"></div>
-        <table id="tablaMovimientos">
+        <div id="res"></div>
+        
+        <table id="tablaMovimientos" style="display:none;">
             <thead><tr><th>Fecha</th><th>Importe</th><th>Estado</th></tr></thead>
             <tbody id="listaMovimientos"></tbody>
         </table>
@@ -29,8 +37,11 @@
             const card = document.getElementById('card').value;
             const res = document.getElementById('res');
             const lista = document.getElementById('listaMovimientos');
+            const tabla = document.getElementById('tablaMovimientos');
+            
             res.innerText = "Consultando...";
             lista.innerHTML = "";
+            tabla.style.display = "none";
 
             try {
                 const response = await fetch('/api/consultar', {
@@ -41,18 +52,36 @@
                 const data = await response.json();
                 
                 if (data.saldo.status) {
-                    res.innerText = "Saldo: $" + data.saldo.balance.availablePurchase;
+                    res.innerText = "Saldo: $" + data.saldo.balance.availablePurchase.toLocaleString('es-AR');
+                    tabla.style.display = "table";
+                    
                     data.movimientos.forEach(mov => {
+                        const [fecha, tiempo] = mov.date.split('T');
+                        const hora = tiempo.substring(0, 5);
+                        
+                        // Lógica para corregir signos visualmente
+                        let clase = "";
+                        let monto = mov.amount;
+                        if (mov.transactionType === "COMPRA") {
+                            clase = "gasto";
+                            monto = monto.includes("-") ? monto : "- " + monto;
+                        } else {
+                            clase = "carga";
+                            monto = monto.replace("-", "");
+                        }
+                        
                         lista.innerHTML += `<tr>
-                            <td>${mov.date.split('T')[0]}</td>
-                            <td>${mov.amount}</td>
+                            <td>${fecha}<br><small>${hora}</small></td>
+                            <td class="${clase}">${monto}</td>
                             <td>${mov.status}</td>
                         </tr>`;
                     });
                 } else {
                     res.innerText = "Error: Tarjeta no encontrada";
                 }
-            } catch (e) { res.innerText = "Error de conexión"; }
+            } catch (e) { 
+                res.innerText = "Error de conexión"; 
+            }
         }
     </script>
 </body>
