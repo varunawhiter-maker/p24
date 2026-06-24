@@ -4,11 +4,12 @@
     <meta charset="UTF-8">
     <title>Consulta de Saldo</title>
     <style>
-        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f4f7f6; }
-        .box { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 320px; text-align: center; }
+        body { font-family: sans-serif; background: #f4f7f6; padding: 20px; }
+        .box { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }
         input { width: 100%; padding: 12px; margin: 15px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
         button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; }
-        #res { margin-top: 15px; font-weight: bold; }
+        table { width: 100%; margin-top: 20px; border-collapse: collapse; font-size: 0.9rem; }
+        th, td { border-bottom: 1px solid #ddd; padding: 8px; text-align: left; }
     </style>
 </head>
 <body>
@@ -16,14 +17,21 @@
         <h3>Consulta de Saldo</h3>
         <input type="text" id="card" placeholder="16 dígitos" maxlength="16">
         <button onclick="consultar()">CONSULTAR</button>
-        <div id="res"></div>
+        <div id="res" style="margin: 15px 0; font-weight: bold;"></div>
+        <table id="tablaMovimientos">
+            <thead><tr><th>Fecha</th><th>Importe</th><th>Estado</th></tr></thead>
+            <tbody id="listaMovimientos"></tbody>
+        </table>
     </div>
 
     <script>
         async function consultar() {
             const card = document.getElementById('card').value;
             const res = document.getElementById('res');
+            const lista = document.getElementById('listaMovimientos');
             res.innerText = "Consultando...";
+            lista.innerHTML = "";
+
             try {
                 const response = await fetch('/api/consultar', {
                     method: 'POST',
@@ -32,12 +40,19 @@
                 });
                 const data = await response.json();
                 
-                // AQUÍ ESTABA EL BUG. Cambiamos balancePeso por availablePurchase
-                res.innerText = data.status ? "Saldo: $" + data.balance.availablePurchase : "Error: Tarjeta no encontrada";
-                
-            } catch (e) { 
-                res.innerText = "Error de conexión"; 
-            }
+                if (data.saldo.status) {
+                    res.innerText = "Saldo: $" + data.saldo.balance.availablePurchase;
+                    data.movimientos.forEach(mov => {
+                        lista.innerHTML += `<tr>
+                            <td>${mov.date.split('T')[0]}</td>
+                            <td>${mov.amount}</td>
+                            <td>${mov.status}</td>
+                        </tr>`;
+                    });
+                } else {
+                    res.innerText = "Error: Tarjeta no encontrada";
+                }
+            } catch (e) { res.innerText = "Error de conexión"; }
         }
     </script>
 </body>
