@@ -303,7 +303,7 @@
   <div class="wrapper">
     <div class="header">
       <h1>Consulta de saldo</h1>
-      <p>Ingresá el número de tu tarjeta gift card</p>
+      <p>Ingresá el número de tu tarjeta:/p>
     </div>
 
     <div class="card">
@@ -391,25 +391,49 @@
       return '**** **** **** ' + clean.slice(-4);
     }
 
-    function formatMonto(raw) {
-      const num = parseFloat(String(raw).replace(/[^0-9.-]/g, ''));
-      if (isNaN(num)) return raw;
-      return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 }).format(Math.abs(num));
+    // El amount viene como string ya formateado en es-AR: "$ 6.078,00" o "$ -10.000,00"
+    // Parseamos respetando el formato argentino: punto = miles, coma = decimal
+    function parseMontoAR(raw) {
+      const str = String(raw ?? '');
+      // Quitar símbolo de moneda, espacios y detectar signo
+      const sinDolar = str.replace(/\$/g, '').trim();
+      const negativo = sinDolar.includes('-');
+      // Quitar todo excepto dígitos y coma decimal
+      const limpio = sinDolar.replace(/-/g, '').replace(/\./g, '').replace(',', '.').trim();
+      const num = parseFloat(limpio);
+      return isNaN(num) ? 0 : (negativo ? -num : num);
     }
 
+    function formatMontoAR(valorAbsoluto) {
+      return new Intl.NumberFormat('es-AR', {
+        style: 'currency',
+        currency: 'ARS',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(valorAbsoluto);
+    }
+
+    // La fecha viene en hora local Argentina (sin offset), la tratamos directamente
     function formatFecha(isoDate) {
       if (!isoDate) return '—';
+      // Forzar interpretación como hora local (sin Z ni offset)
       const [datePart, timePart = ''] = isoDate.split('T');
       const [year, month, day] = datePart.split('-');
       const hora = timePart.substring(0, 5);
-      return `${day}/${month}/${year}${hora ? ' · ' + hora : ''}`;
+      return `${day}/${month}/${year}${hora ? ', ' + hora : ''}`;
     }
 
     function buildMovimientoItem(mov) {
       const isCompra = mov.transactionType === 'COMPRA';
       const clase = isCompra ? 'compra' : 'carga';
-      const signo = isCompra ? '−' : '+';
       const label = isCompra ? 'Compra' : 'Carga';
+
+      // COMPRA: amount positivo en la API → mostrar como negativo (débito)
+      // CARGA:  amount negativo en la API → mostrar como positivo (crédito)
+      const valorRaw = parseMontoAR(mov.amount);
+      const valorAbs = Math.abs(valorRaw);
+      const signo = isCompra ? '−' : '+';
+      const montoFormateado = `${signo} ${formatMontoAR(valorAbs)}`;
 
       const iconPath = isCompra
         ? '<path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/>'
@@ -425,7 +449,7 @@
           <div class="mov-tipo">${label}</div>
           <div class="mov-fecha">${formatFecha(mov.date)}</div>
         </div>
-        <div class="mov-monto ${clase}">${signo} ${formatMonto(mov.amount)}</div>
+        <div class="mov-monto ${clase}">${montoFormateado}</div>
         <span class="mov-status">${mov.status || ''}</span>
       `;
       return li;
