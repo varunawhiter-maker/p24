@@ -1,88 +1,492 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Consulta de Saldo</title>
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; display: flex; justify-content: center; padding: 20px; }
-        .box { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
-        input { width: 100%; padding: 12px; margin: 15px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        button:hover { background: #0056b3; }
-        #res { margin: 15px 0; font-size: 1.2rem; font-weight: bold; color: #333; }
-        table { width: 100%; margin-top: 20px; border-collapse: collapse; font-size: 0.85rem; }
-        th { background: #f8f9fa; border-bottom: 2px solid #dee2e6; padding: 10px; text-align: left; }
-        td { border-bottom: 1px solid #eee; padding: 10px; }
-        .gasto { color: #d9534f; }
-        .carga { color: #5cb85c; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Consulta de saldo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f7f7f5;
+      --surface: #ffffff;
+      --border: rgba(0,0,0,0.08);
+      --border-strong: rgba(0,0,0,0.14);
+      --text-primary: #1a1a1a;
+      --text-secondary: #6b6b6b;
+      --text-hint: #ababab;
+      --accent: #1a1a1a;
+      --accent-hover: #333;
+      --green: #16a34a;
+      --green-bg: #f0fdf4;
+      --red: #dc2626;
+      --red-bg: #fef2f2;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 48px 16px 64px;
+      color: var(--text-primary);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrapper {
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .header {
+      margin-bottom: 28px;
+    }
+
+    .header h1 {
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+      color: var(--text-primary);
+    }
+
+    .header p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin-bottom: 12px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .input-wrap {
+      position: relative;
+      flex: 1;
+    }
+
+    .input-wrap svg {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-hint);
+      pointer-events: none;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      height: 42px;
+      padding: 0 12px 0 36px;
+      font-size: 14px;
+      font-family: var(--font);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      background: var(--bg);
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      letter-spacing: 0.5px;
+    }
+
+    input[type="text"]::placeholder { color: var(--text-hint); }
+
+    input[type="text"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0,0,0,0.06);
+      background: var(--surface);
+    }
+
+    button.btn-primary {
+      height: 42px;
+      padding: 0 18px;
+      font-size: 14px;
+      font-weight: 500;
+      font-family: var(--font);
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s, opacity 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    button.btn-primary:hover { background: var(--accent-hover); }
+    button.btn-primary:active { opacity: 0.85; }
+    button.btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .saldo-card {
+      display: none;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin-bottom: 12px;
+    }
+
+    .saldo-card.visible { display: block; }
+
+    .saldo-label {
+      font-size: 12px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-hint);
+      margin-bottom: 6px;
+    }
+
+    .saldo-amount {
+      font-size: 36px;
+      font-weight: 600;
+      letter-spacing: -1px;
+      color: var(--text-primary);
+      line-height: 1;
+    }
+
+    .saldo-card-num {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 8px;
+      font-feature-settings: 'tnum';
+    }
+
+    .error-card {
+      display: none;
+      background: var(--red-bg);
+      border: 1px solid rgba(220,38,38,0.15);
+      border-radius: var(--radius-lg);
+      padding: 14px 16px;
+      margin-bottom: 12px;
+      font-size: 14px;
+      color: var(--red);
+      display: none;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .error-card.visible { display: flex; }
+
+    .movimientos-card {
+      display: none;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .movimientos-card.visible { display: block; }
+
+    .mov-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .mov-count {
+      font-size: 12px;
+      color: var(--text-hint);
+      font-weight: 400;
+    }
+
+    .mov-empty {
+      padding: 32px 20px;
+      text-align: center;
+      font-size: 14px;
+      color: var(--text-hint);
+    }
+
+    .mov-list { list-style: none; }
+
+    .mov-item {
+      display: flex;
+      align-items: center;
+      padding: 13px 20px;
+      border-bottom: 1px solid var(--border);
+      gap: 12px;
+    }
+
+    .mov-item:last-child { border-bottom: none; }
+
+    .mov-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .mov-icon.compra {
+      background: var(--red-bg);
+      color: var(--red);
+    }
+
+    .mov-icon.carga {
+      background: var(--green-bg);
+      color: var(--green);
+    }
+
+    .mov-info { flex: 1; min-width: 0; }
+
+    .mov-tipo {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+      margin-bottom: 2px;
+    }
+
+    .mov-fecha {
+      font-size: 12px;
+      color: var(--text-hint);
+    }
+
+    .mov-monto {
+      font-size: 14px;
+      font-weight: 500;
+      font-feature-settings: 'tnum';
+      white-space: nowrap;
+    }
+
+    .mov-monto.compra { color: var(--red); }
+    .mov-monto.carga { color: var(--green); }
+
+    .mov-status {
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.05);
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+  </style>
 </head>
 <body>
-
-    <div class="box">
-        <h3>Consulta de Saldo</h3>
-        <input type="text" id="card" placeholder="Ingrese 16 dígitos" maxlength="16">
-        <button onclick="consultar()">CONSULTAR</button>
-        <div id="res"></div>
-        
-        <table id="tablaMovimientos" style="display:none;">
-            <thead><tr><th>Fecha</th><th>Importe</th><th>Estado</th></tr></thead>
-            <tbody id="listaMovimientos"></tbody>
-        </table>
+  <div class="wrapper">
+    <div class="header">
+      <h1>Consulta de saldo</h1>
+      <p>Ingresá el número de tu tarjeta gift card</p>
     </div>
 
-    <script>
-        async function consultar() {
-            const card = document.getElementById('card').value;
-            const res = document.getElementById('res');
-            const lista = document.getElementById('listaMovimientos');
-            const tabla = document.getElementById('tablaMovimientos');
-            
-            res.innerText = "Consultando...";
-            lista.innerHTML = "";
-            tabla.style.display = "none";
+    <div class="card">
+      <div class="input-row">
+        <div class="input-wrap">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+          </svg>
+          <input
+            type="text"
+            id="cardInput"
+            placeholder="0000 0000 0000 0000"
+            maxlength="16"
+            inputmode="numeric"
+            autocomplete="cc-number"
+          >
+        </div>
+        <button class="btn-primary" id="btnConsultar" onclick="consultar()">
+          <span class="spinner" id="spinner"></span>
+          <span id="btnText">Consultar</span>
+        </button>
+      </div>
+    </div>
 
-            try {
-                const response = await fetch('/api/consultar', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ cardNumber: card })
-                });
-                const data = await response.json();
-                
-                if (data.saldo.status) {
-                    res.innerText = "Saldo: $" + data.saldo.balance.availablePurchase.toLocaleString('es-AR');
-                    tabla.style.display = "table";
-                    
-                    data.movimientos.forEach(mov => {
-                        const [fecha, tiempo] = mov.date.split('T');
-                        const hora = tiempo.substring(0, 5);
-                        
-                        // Lógica para corregir signos visualmente
-                        let clase = "";
-                        let monto = mov.amount;
-                        if (mov.transactionType === "COMPRA") {
-                            clase = "gasto";
-                            monto = monto.includes("-") ? monto : "- " + monto;
-                        } else {
-                            clase = "carga";
-                            monto = monto.replace("-", "");
-                        }
-                        
-                        lista.innerHTML += `<tr>
-                            <td>${fecha}<br><small>${hora}</small></td>
-                            <td class="${clase}">${monto}</td>
-                            <td>${mov.status}</td>
-                        </tr>`;
-                    });
-                } else {
-                    res.innerText = "Error: Tarjeta no encontrada";
-                }
-            } catch (e) { 
-                res.innerText = "Error de conexión"; 
-            }
+    <div class="error-card" id="errorCard" role="alert" aria-live="polite">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <span id="errorMsg">Error desconocido</span>
+    </div>
+
+    <div class="saldo-card" id="saldoCard" aria-live="polite">
+      <div class="saldo-label">Saldo disponible</div>
+      <div class="saldo-amount" id="saldoAmount">—</div>
+      <div class="saldo-card-num" id="saldoCardNum"></div>
+    </div>
+
+    <div class="movimientos-card" id="movimientosCard">
+      <div class="mov-header">
+        <span>Movimientos</span>
+        <span class="mov-count" id="movCount"></span>
+      </div>
+      <ul class="mov-list" id="movList"></ul>
+    </div>
+  </div>
+
+  <script>
+    const cardInput = document.getElementById('cardInput');
+    const btnConsultar = document.getElementById('btnConsultar');
+    const spinner = document.getElementById('spinner');
+    const btnText = document.getElementById('btnText');
+    const errorCard = document.getElementById('errorCard');
+    const errorMsg = document.getElementById('errorMsg');
+    const saldoCard = document.getElementById('saldoCard');
+    const saldoAmount = document.getElementById('saldoAmount');
+    const saldoCardNum = document.getElementById('saldoCardNum');
+    const movimientosCard = document.getElementById('movimientosCard');
+    const movList = document.getElementById('movList');
+    const movCount = document.getElementById('movCount');
+
+    cardInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') consultar();
+    });
+
+    function setLoading(isLoading) {
+      btnConsultar.disabled = isLoading;
+      spinner.style.display = isLoading ? 'block' : 'none';
+      btnText.textContent = isLoading ? 'Consultando' : 'Consultar';
+    }
+
+    function resetUI() {
+      errorCard.classList.remove('visible');
+      saldoCard.classList.remove('visible');
+      movimientosCard.classList.remove('visible');
+      movList.innerHTML = '';
+    }
+
+    function showError(msg) {
+      errorMsg.textContent = msg;
+      errorCard.classList.add('visible');
+    }
+
+    function formatCardMask(number) {
+      const clean = number.replace(/\D/g, '');
+      return '**** **** **** ' + clean.slice(-4);
+    }
+
+    function formatMonto(raw) {
+      const num = parseFloat(String(raw).replace(/[^0-9.-]/g, ''));
+      if (isNaN(num)) return raw;
+      return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 }).format(Math.abs(num));
+    }
+
+    function formatFecha(isoDate) {
+      if (!isoDate) return '—';
+      const [datePart, timePart = ''] = isoDate.split('T');
+      const [year, month, day] = datePart.split('-');
+      const hora = timePart.substring(0, 5);
+      return `${day}/${month}/${year}${hora ? ' · ' + hora : ''}`;
+    }
+
+    function buildMovimientoItem(mov) {
+      const isCompra = mov.transactionType === 'COMPRA';
+      const clase = isCompra ? 'compra' : 'carga';
+      const signo = isCompra ? '−' : '+';
+      const label = isCompra ? 'Compra' : 'Carga';
+
+      const iconPath = isCompra
+        ? '<path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/>'
+        : '<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>';
+
+      const li = document.createElement('li');
+      li.className = 'mov-item';
+      li.innerHTML = `
+        <div class="mov-icon ${clase}" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconPath}</svg>
+        </div>
+        <div class="mov-info">
+          <div class="mov-tipo">${label}</div>
+          <div class="mov-fecha">${formatFecha(mov.date)}</div>
+        </div>
+        <div class="mov-monto ${clase}">${signo} ${formatMonto(mov.amount)}</div>
+        <span class="mov-status">${mov.status || ''}</span>
+      `;
+      return li;
+    }
+
+    async function consultar() {
+      const cardNumber = cardInput.value.replace(/\s/g, '').trim();
+
+      if (!cardNumber) {
+        showError('Ingresá el número de tarjeta.');
+        return;
+      }
+      if (!/^\d{16}$/.test(cardNumber)) {
+        showError('El número debe tener exactamente 16 dígitos.');
+        return;
+      }
+
+      resetUI();
+      setLoading(true);
+
+      try {
+        const response = await fetch('/api/consultar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cardNumber })
+        });
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const data = await response.json();
+
+        if (!data.saldo || !data.saldo.status) {
+          showError('Tarjeta no encontrada o sin datos disponibles.');
+          return;
         }
-    </script>
+
+        const balance = data.saldo.balance?.availablePurchase ?? 0;
+        saldoAmount.textContent = new Intl.NumberFormat('es-AR', {
+          style: 'currency', currency: 'ARS', minimumFractionDigits: 0
+        }).format(balance);
+        saldoCardNum.textContent = formatCardMask(cardNumber);
+        saldoCard.classList.add('visible');
+
+        const movimientos = Array.isArray(data.movimientos) ? data.movimientos : [];
+        movimientosCard.classList.add('visible');
+
+        if (movimientos.length === 0) {
+          movCount.textContent = '';
+          movList.innerHTML = '<li class="mov-empty">Sin movimientos registrados</li>';
+        } else {
+          movCount.textContent = `${movimientos.length} registro${movimientos.length !== 1 ? 's' : ''}`;
+          movimientos.forEach(mov => movList.appendChild(buildMovimientoItem(mov)));
+        }
+
+      } catch (err) {
+        console.error(err);
+        showError('No se pudo conectar al servidor. Intentá de nuevo.');
+      } finally {
+        setLoading(false);
+      }
+    }
+  </script>
 </body>
 </html>
