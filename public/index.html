@@ -31,8 +31,13 @@
                     body: JSON.stringify({ cardNumber: card })
                 });
                 const data = await response.json();
-                res.innerText = data.status ? "Saldo: $" + data.balance.balancePeso : "Error: Tarjeta no encontrada";
-            } catch (e) { res.innerText = "Error de conexión"; }
+                
+                // AQUÍ ESTABA EL BUG. Cambiamos balancePeso por availablePurchase
+                res.innerText = data.status ? "Saldo: $" + data.balance.availablePurchase : "Error: Tarjeta no encontrada";
+                
+            } catch (e) { 
+                res.innerText = "Error de conexión"; 
+            }
         }
     </script>
 </body>
