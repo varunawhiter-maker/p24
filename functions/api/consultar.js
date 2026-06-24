@@ -1,45 +1,30 @@
 export async function onRequestPost(context) {
     const { request } = context;
-    let body;
-    
-    try {
-        body = await request.json();
-    } catch (e) {
-        return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400 });
-    }
-    
-    // Petición al servidor real
-    const response = await fetch("https://pago24.com.ar/api/proxy?url=https%3A%2F%2Fmt-cm01-prd.paytec.com.ar%2Fgiftcards%2Fbalance&authRequired=false", {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'User-Agent': 'Mozilla/5.0',
-            'Referer': 'https://pago24.com.ar/tarjetas-regalo'
-        },
-        body: JSON.stringify({ cardNumber: body.cardNumber })
-    });
+    const body = await request.json();
 
-    const data = await response.json();
-    
-    // Retornamos la respuesta forzando al navegador y a Cloudflare a NO guardar caché
-    return new Response(JSON.stringify(data), {
+    const fetchConfig = {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardNumber: body.cardNumber })
+    };
+
+    // Consultar Saldo y Transacciones en paralelo
+    const [resSaldo, resTrans] = await Promise.all([
+        fetch("https://pago24.com.ar/api/proxy?url=https%3A%2F%2Fmt-cm01-prd.paytec.com.ar%2Fgiftcards%2Fbalance", fetchConfig),
+        fetch("https://pago24.com.ar/api/proxy?url=https%3A%2F%2Fmt-cm01-prd.paytec.com.ar%2Fgiftcards%2Ftransactions", fetchConfig)
+    ]);
+
+    const dataSaldo = await resSaldo.json();
+    const dataTrans = await resTrans.json();
+
+    return new Response(JSON.stringify({ 
+        saldo: dataSaldo, 
+        movimientos: dataTrans.transactions || [] 
+    }), {
         headers: { 
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': '*',
-            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0'
-        }
-    });
-}
-
-// Manejo de preflight para evitar bloqueos CORS
-export async function onRequestOptions() {
-    return new Response(null, {
-        headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type'
+            'Cache-Control': 'no-store, no-cache'
         }
     });
 }
