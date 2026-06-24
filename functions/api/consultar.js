@@ -1,35 +1,30 @@
-<script>
-    async function consultar() {
-        const card = document.getElementById('card').value;
-        const res = document.getElementById('res');
-        const lista = document.getElementById('listaMovimientos');
-        res.innerText = "Consultando...";
-        lista.innerHTML = "";
+export async function onRequestPost(context) {
+    const { request } = context;
+    const body = await request.json();
 
-        try {
-            const response = await fetch('/api/consultar', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cardNumber: card })
-            });
-            const data = await response.json();
-            
-            if (data.saldo.status) {
-                res.innerText = "Saldo: $" + data.saldo.balance.availablePurchase;
-                
-                data.movimientos.forEach(mov => {
-                    const [fecha, tiempo] = mov.date.split('T');
-                    const hora = tiempo.substring(0, 5);
-                    
-                    lista.innerHTML += `<tr>
-                        <td>${fecha} ${hora}</td>
-                        <td>${mov.amount}</td>
-                        <td>${mov.status}</td>
-                    </tr>`;
-                });
-            } else {
-                res.innerText = "Error: Tarjeta no encontrada";
-            }
-        } catch (e) { res.innerText = "Error de conexión"; }
-    }
-</script>
+    const fetchConfig = {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardNumber: body.cardNumber })
+    };
+
+    // Consultar Saldo y Transacciones en paralelo
+    const [resSaldo, resTrans] = await Promise.all([
+        fetch("https://pago24.com.ar/api/proxy?url=https%3A%2F%2Fmt-cm01-prd.paytec.com.ar%2Fgiftcards%2Fbalance", fetchConfig),
+        fetch("https://pago24.com.ar/api/proxy?url=https%3A%2F%2Fmt-cm01-prd.paytec.com.ar%2Fgiftcards%2Ftransactions", fetchConfig)
+    ]);
+
+    const dataSaldo = await resSaldo.json();
+    const dataTrans = await resTrans.json();
+
+    return new Response(JSON.stringify({ 
+        saldo: dataSaldo, 
+        movimientos: dataTrans.transactions || [] 
+    }), {
+        headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Cache-Control': 'no-store, no-cache'
+        }
+    });
+}
