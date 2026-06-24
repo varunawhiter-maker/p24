@@ -297,13 +297,32 @@
       color: var(--text-secondary);
       flex-shrink: 0;
     }
+
+    .geo-footer {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      margin-top: 20px;
+      padding: 12px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+    }
+
+    .geo-footer.visible { display: flex; }
+
+    .geo-flag { font-size: 22px; line-height: 1; flex-shrink: 0; }
+
+    .geo-text { font-size: 13px; color: var(--text-secondary); }
+
+    .geo-text strong { color: var(--text-primary); font-weight: 500; }
   </style>
 </head>
 <body>
   <div class="wrapper">
     <div class="header">
       <h1>Consulta de saldo</h1>
-      <p>Ingresá el número de tu tarjeta:</p>
+      <p>Ingresá el número de tu tarjeta gift card</p>
     </div>
 
     <div class="card">
@@ -347,6 +366,11 @@
         <span class="mov-count" id="movCount"></span>
       </div>
       <ul class="mov-list" id="movList"></ul>
+    </div>
+
+    <div class="geo-footer" id="geoFooter">
+      <span class="geo-flag" id="geoFlag"></span>
+      <span class="geo-text">¡Hola! Bienvenido, usuario de: <strong id="geoCountry"></strong></span>
     </div>
   </div>
 
@@ -511,6 +535,34 @@
         setLoading(false);
       }
     }
+
+    function countryCodeToFlag(code) {
+      return code
+        .toUpperCase()
+        .split('')
+        .map(c => String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65))
+        .join('');
+    }
+
+    async function detectGeo() {
+      try {
+        const res = await fetch('https://ipapi.co/json/');
+        if (!res.ok) return;
+        const geo = await res.json();
+
+        const countryCode = geo.country_code;
+        const countryName = geo.country_name;
+        if (!countryCode || !countryName) return;
+
+        document.getElementById('geoFlag').textContent = countryCodeToFlag(countryCode);
+        document.getElementById('geoCountry').textContent = countryName;
+        document.getElementById('geoFooter').classList.add('visible');
+      } catch {
+        // nice-to-have, falla silenciosa
+      }
+    }
+
+    detectGeo();
   </script>
 </body>
 </html>
